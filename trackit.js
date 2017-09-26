@@ -3,7 +3,6 @@
 import express from 'express';
 import { fromExpress } from 'webtask-tools';
 import bodyParser from 'body-parser';
-import request from 'request';
 import crypto from 'crypto';
 import helmet from 'helmet';
 import mongoose from 'mongoose';
@@ -51,8 +50,8 @@ const Feature = mongoose.model('Feature', GeoJSONFeature);
 //   1) keep device ID's a known and fixed length
 //   2) obfuscate the device ID
 //   3) prevent injection attacks
-function hashedDeviceId(req, id) {
-  let hmac = crypto.createHmac('sha256', req.webtaskContext.secrets.DEVICE_KEY);
+function hashedDeviceId(secret, id) {
+  let hmac = crypto.createHmac('sha256', secret);
   return hmac.update(id).digest('hex');
 }
 
@@ -69,7 +68,7 @@ function sendJSONErrorResponse(response, message, status = 500) {
 //    "long": -117.1611}
 app.post('/devices/:deviceId/locations',
   (req, res) => {
-    var deviceId = hashedDeviceId(req, req.params.deviceId);
+    var deviceId = hashedDeviceId(req.webtaskContext.secrets.DEVICE_KEY, req.params.deviceId);
     console.log(`Converted deviceId to ${deviceId}`);
     
     // Check for required fields
@@ -116,7 +115,7 @@ app.post('/devices/:deviceId/locations',
 // Retrieves the history for a device as a GeoJSON
 app.get('/devices/:deviceId/history',
   (req, res) => {
-    const deviceId = hashedDeviceId(req, req.params.deviceId);
+    const deviceId = hashedDeviceId(req.webtaskContext.secrets.DEVICE_KEY, req.params.deviceId);
     console.log(`Converted deviceId to ${deviceId}`);
     
     // List all documents for this device
